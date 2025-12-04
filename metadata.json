@@ -1,0 +1,5 @@
+{
+  "name": "Proxmox Log Viewer",
+  "description": "A responsive, high-fidelity log viewer interface replicating Proxmox style with advanced data table and modal interactions.",
+  "requestFramePermissions": []
+}
