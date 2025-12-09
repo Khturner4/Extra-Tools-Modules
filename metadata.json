@@ -1,5 +1,5 @@
 {
-  "name": "Proxmox Log Viewer",
+  "name": " ASS V 1.0",
   "description": "A responsive, high-fidelity log viewer interface replicating Proxmox style with advanced data table and modal interactions.",
   "requestFramePermissions": []
 }

@@ -1,12 +1,14 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Header } from './components/Header';
 import { FilterBar } from './components/FilterBar';
 import { LogModal } from './components/LogModal';
 import { BWList } from './components/BWList';
 import { DLPList } from './components/DLPList';
-import { LogEntry, FilterState } from './types';
-import { AlertCircle, CheckCircle, Bug, ShieldAlert, ArrowRight, ArrowLeft } from 'lucide-react';
+import { Dashboard } from './components/Dashboard';
+import { SpamLevelModal } from './components/SpamLevelModal';
+import { LogEntry, FilterState, View } from './types';
+import { AlertCircle, CheckCircle, Bug, ShieldAlert, ArrowUp, ArrowDown, MoreVertical, FileText, Activity, ArrowRight, ArrowLeft } from 'lucide-react';
 
 // Mock Data Generation
 const generateMockData = (): LogEntry[] => {
@@ -118,9 +120,11 @@ const generateMockData = (): LogEntry[] => {
 };
 
 const App: React.FC = () => {
-  const [currentView, setCurrentView] = useState<'logs' | 'bwlist' | 'dlp'>('logs');
+  const [currentView, setCurrentView] = useState<View>('dashboard');
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [selectedLog, setSelectedLog] = useState<LogEntry | null>(null);
+  const [spamModalLog, setSpamModalLog] = useState<LogEntry | null>(null);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [filters, setFilters] = useState<FilterState>({
     domain: 'sara55.co',
     status: 'Spam Quarantine',
@@ -133,13 +137,36 @@ const App: React.FC = () => {
     toDate: ''
   });
 
+  const menuRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     // Simulate fetching data
     setLogs(generateMockData());
+
+    // Close menu when clicking outside
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenuId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
   }, []);
 
-  const handleRowClick = (log: LogEntry) => {
-    setSelectedLog(log);
+  const toggleMenu = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setOpenMenuId(openMenuId === id ? null : id);
+  };
+
+  const handleMenuAction = (action: 'details' | 'spam', log: LogEntry) => {
+    if (action === 'details') {
+      setSelectedLog(log);
+    } else if (action === 'spam') {
+      setSpamModalLog(log);
+    }
+    setOpenMenuId(null);
   };
 
   const closeModal = () => {
@@ -151,9 +178,13 @@ const App: React.FC = () => {
       <div className="max-w-[1800px] mx-auto p-4">
         <Header currentView={currentView} onNavigate={setCurrentView} />
         
-        {currentView === 'logs' ? (
+        {currentView === 'dashboard' && (
+          <Dashboard onNavigate={setCurrentView} />
+        )}
+
+        {currentView === 'logs' && (
           /* Logs View */
-          <div className="bg-white rounded shadow-sm border border-gray-200">
+          <div className="bg-white rounded shadow-sm border border-gray-200 animate-in fade-in">
             
             <div className="p-4 border-b border-gray-200 bg-white rounded-t">
               <h2 className="text-xl font-bold text-prox-green mb-4">Prox Logs</h2>
@@ -161,27 +192,25 @@ const App: React.FC = () => {
               <FilterBar filters={filters} setFilters={setFilters} />
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto min-h-[400px]">
               <table className="w-full text-left text-sm text-gray-700">
                 <thead className="bg-white text-gray-800 border-b border-gray-200">
                   <tr>
                     <th className="p-4 font-bold whitespace-nowrap w-[130px]">Time</th>
                     <th className="p-4 font-bold whitespace-nowrap w-[160px]">Status</th>
-                    <th className="p-4 font-bold whitespace-nowrap w-[90px]">Score</th>
                     <th className="p-4 font-bold whitespace-nowrap w-[200px]">Sender</th>
                     <th className="p-4 font-bold whitespace-nowrap w-[200px]">Receiver</th>
                     <th className="p-4 font-bold whitespace-nowrap">Subject</th>
-                    <th className="p-4 font-bold whitespace-nowrap w-[140px]">Client IP</th>
                     <th className="p-4 font-bold whitespace-nowrap w-[80px] text-center">Virus</th>
                     <th className="p-4 font-bold whitespace-nowrap w-[80px] text-center">Dir</th>
+                    <th className="p-4 font-bold whitespace-nowrap w-[60px] text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
                   {logs.map((log) => (
                     <tr 
                       key={log.id} 
-                      onClick={() => handleRowClick(log)}
-                      className="hover:bg-green-50/30 cursor-pointer transition-colors group"
+                      className="hover:bg-green-50/30 transition-colors group"
                     >
                       {/* Time */}
                       <td className="p-4 align-top whitespace-nowrap text-gray-600">
@@ -213,13 +242,6 @@ const App: React.FC = () => {
                         </div>
                       </td>
 
-                      {/* Spam Score */}
-                      <td className="p-4 align-top">
-                        <span className={`font-mono font-medium ${parseFloat(log.sa_score) > 3 ? 'text-orange-600' : 'text-gray-600'}`}>
-                          {log.sa_score}
-                        </span>
-                      </td>
-
                       {/* Sender */}
                       <td className="p-4 align-top break-all">
                         <div className="text-gray-800 text-xs">{log.sender}</div>
@@ -233,13 +255,6 @@ const App: React.FC = () => {
                       {/* Subject */}
                       <td className="p-4 align-top min-w-[200px]">
                         <div className="text-gray-700 line-clamp-2">{log.subject}</div>
-                      </td>
-
-                      {/* Client IP */}
-                      <td className="p-4 align-top whitespace-nowrap">
-                        <div className="text-gray-600 font-mono text-xs bg-gray-50 px-2 py-1 rounded inline-block">
-                          {log.client_ip}
-                        </div>
                       </td>
 
                       {/* Virus Info (Icon + Tooltip) */}
@@ -265,6 +280,39 @@ const App: React.FC = () => {
                             </div>
                         )}
                       </td>
+
+                      {/* Actions (Kebab Menu) */}
+                      <td className="p-4 align-top text-center relative">
+                        <button 
+                          onClick={(e) => toggleMenu(e, log.id)}
+                          className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </button>
+
+                        {/* Dropdown Menu */}
+                        {openMenuId === log.id && (
+                          <div 
+                            ref={menuRef}
+                            className="absolute right-8 top-8 z-20 w-40 bg-white rounded-md shadow-lg border border-gray-100 overflow-hidden animate-in fade-in zoom-in-95 duration-100"
+                          >
+                            <button 
+                              onClick={() => handleMenuAction('details', log)}
+                              className="w-full text-left px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                            >
+                              <FileText className="w-3.5 h-3.5 text-gray-400" />
+                              Log Details
+                            </button>
+                            <button 
+                              onClick={() => handleMenuAction('spam', log)}
+                              className="w-full text-left px-4 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 flex items-center gap-2"
+                            >
+                              <Activity className="w-3.5 h-3.5 text-gray-400" />
+                              Spam Level
+                            </button>
+                          </div>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -288,16 +336,21 @@ const App: React.FC = () => {
             </div>
 
           </div>
-        ) : currentView === 'bwlist' ? (
+        )}
+        
+        {currentView === 'bwlist' && (
           /* Advanced Black/White Lists View */
           <BWList />
-        ) : (
+        )}
+        
+        {currentView === 'dlp' && (
           /* DLP Filters View */
           <DLPList />
         )}
       </div>
 
       <LogModal log={selectedLog} onClose={closeModal} />
+      <SpamLevelModal log={spamModalLog} onClose={() => setSpamModalLog(null)} />
     </div>
   );
 };

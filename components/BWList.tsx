@@ -8,22 +8,20 @@ import {
   Plus, 
   Search, 
   ShieldAlert, 
-  MoreHorizontal, 
   LayoutGrid, 
   List as ListIcon,
   AlertTriangle,
   Edit,
-  Copy,
-  ArrowRight,
-  ArrowLeft,
-  ArrowRightLeft,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
   Filter
 } from 'lucide-react';
 
 export const BWList: React.FC = () => {
   // State
   const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
-  const [filterType, setFilterType] = useState<'All' | 'Allow' | 'Block'>('All');
+  const [filterType, setFilterType] = useState<'All' | 'Allow' | 'Block' | 'SPF Whitelist'>('All');
   const [filterDirection, setFilterDirection] = useState<'All' | 'Incoming' | 'Outgoing' | 'Both'>('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -84,6 +82,7 @@ export const BWList: React.FC = () => {
     domains: new Set(rules.map(r => r.domain)).size,
     allow: rules.filter(r => r.type === 'Allow').length,
     block: rules.filter(r => r.type === 'Block').length,
+    spf: rules.filter(r => r.type === 'SPF Whitelist').length,
   };
 
   // Filtering Logic
@@ -133,9 +132,21 @@ export const BWList: React.FC = () => {
 
   // Helper for Direction Icon
   const DirectionIcon = ({ dir }: { dir: string }) => {
-    if (dir === 'Incoming') return <ArrowLeft className="w-3.5 h-3.5" />;
-    if (dir === 'Outgoing') return <ArrowRight className="w-3.5 h-3.5" />;
-    return <ArrowRightLeft className="w-3.5 h-3.5" />;
+    if (dir === 'Incoming') return <ArrowDown className="w-3.5 h-3.5" />;
+    if (dir === 'Outgoing') return <ArrowUp className="w-3.5 h-3.5" />;
+    return <ArrowUpDown className="w-3.5 h-3.5" />;
+  };
+
+  const getBadgeStyles = (type: string) => {
+    if (type === 'Block') return 'bg-red-100 text-red-700';
+    if (type === 'SPF Whitelist') return 'bg-blue-100 text-blue-700';
+    return 'bg-green-100 text-green-700';
+  };
+
+  const getBadgeLabel = (type: string) => {
+    if (type === 'Allow') return 'Allow List';
+    if (type === 'Block') return 'Block List';
+    return type;
   };
 
   return (
@@ -150,6 +161,7 @@ export const BWList: React.FC = () => {
             <span className="px-2 py-0.5 bg-gray-200 rounded-full text-gray-600">{stats.domains} tenant domains</span>
             <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full">{stats.allow} allow rules</span>
             <span className="px-2 py-0.5 bg-red-100 text-red-700 rounded-full">{stats.block} block rules</span>
+            {stats.spf > 0 && <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">{stats.spf} SPF rules</span>}
           </div>
         </div>
         
@@ -190,7 +202,7 @@ export const BWList: React.FC = () => {
 
           {/* Type Filter */}
           <div className="flex gap-2">
-            {['All', 'Allow', 'Block'].map(type => (
+            {['All', 'Allow', 'Block', 'SPF Whitelist'].map(type => (
               <button
                 key={type}
                 onClick={() => setFilterType(type as any)}
@@ -198,11 +210,12 @@ export const BWList: React.FC = () => {
                   filterType === type 
                     ? type === 'Allow' ? 'bg-green-100 text-green-700 border-green-200' 
                     : type === 'Block' ? 'bg-red-100 text-red-700 border-red-200' 
+                    : type === 'SPF Whitelist' ? 'bg-blue-100 text-blue-700 border-blue-200'
                     : 'bg-gray-800 text-white border-gray-800'
                     : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50'
                 }`}
               >
-                {type === 'All' ? 'All Rules' : type === 'Allow' ? 'Allow only' : 'Block only'}
+                {type === 'All' ? 'All Rules' : type === 'Allow' ? 'Allow only' : type === 'Block' ? 'Block only' : 'SPF only'}
               </button>
             ))}
           </div>
@@ -256,12 +269,8 @@ export const BWList: React.FC = () => {
                   <div>
                     <h3 className="font-bold text-gray-800 text-md leading-tight">{rule.domain}</h3>
                     <div className="flex gap-2 mt-1">
-                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        rule.type === 'Block' 
-                          ? 'bg-red-100 text-red-700' 
-                          : 'bg-green-100 text-green-700'
-                      }`}>
-                        {rule.type === 'Allow' ? 'Allow List' : 'Block List'}
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${getBadgeStyles(rule.type)}`}>
+                        {getBadgeLabel(rule.type)}
                       </span>
                       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-gray-100 text-gray-600">
                         <DirectionIcon dir={rule.direction} /> {rule.direction}
@@ -271,7 +280,7 @@ export const BWList: React.FC = () => {
                 </div>
                 
                 {/* Mock Conflict Warning */}
-                {rules.some(r => r.domain === rule.domain && r.type !== rule.type && r.items.some(i => rule.items.includes(i))) && (
+                {rules.some(r => r.domain === rule.domain && r.type !== rule.type && r.type !== 'SPF Whitelist' && rule.type !== 'SPF Whitelist' && r.items.some(i => rule.items.includes(i))) && (
                   <div className="text-orange-500" title="Possible conflict detected">
                     <AlertTriangle className="w-4 h-4" />
                   </div>
@@ -351,12 +360,8 @@ export const BWList: React.FC = () => {
                   <tr key={rule.id} className="hover:bg-gray-50 transition-colors group">
                     <td className="px-6 py-4 font-semibold text-gray-800">{rule.domain}</td>
                     <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                        rule.type === 'Block' 
-                          ? 'bg-red-100 text-red-700' 
-                          : 'bg-green-100 text-green-700'
-                      }`}>
-                        {rule.type === 'Allow' ? 'Allow List' : 'Block List'}
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${getBadgeStyles(rule.type)}`}>
+                        {getBadgeLabel(rule.type)}
                       </span>
                     </td>
                     <td className="px-6 py-4">

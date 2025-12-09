@@ -1,10 +1,11 @@
 
 import React from 'react';
-import { Home, ChevronRight, Bolt, List, Shield, FileSearch } from 'lucide-react';
+import { Home, ChevronRight, Bolt } from 'lucide-react';
+import { View } from '../types';
 
 interface HeaderProps {
-  currentView: 'logs' | 'bwlist' | 'dlp';
-  onNavigate: (view: 'logs' | 'bwlist' | 'dlp') => void;
+  currentView: View;
+  onNavigate: (view: View) => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
@@ -13,7 +14,7 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
       {/* Top Bar simulating the Proxmox header environment */}
       <div className="bg-[#fcfcfc] text-white p-2 px-4 flex items-center justify-between text-sm shadow-sm border-b border-gray-200">
         <div className="flex items-center gap-4">
-           <span className="font-bold text-lg tracking-tight text-prox-gray cursor-pointer" onClick={() => onNavigate('logs')}>Proxmox</span>
+           <span className="font-bold text-lg tracking-tight text-prox-gray cursor-pointer" onClick={() => onNavigate('dashboard')}>Posta Gate</span>
            <div className="flex items-center gap-4 text-gray-500 font-medium">
              <span className="hover:text-prox-green cursor-pointer transition-colors">Billing</span>
              <span className="hover:text-prox-green cursor-pointer transition-colors">Migrations</span>
@@ -33,52 +34,20 @@ export const Header: React.FC<HeaderProps> = ({ currentView, onNavigate }) => {
         
         {/* Breadcrumbs */}
         <div className="flex items-center gap-2 text-gray-600">
-          <div className="flex items-center gap-1 font-semibold text-gray-800">
+          <button onClick={() => onNavigate('dashboard')} className="flex items-center gap-1 font-semibold text-gray-800 hover:text-prox-green transition-colors">
              <Home className="w-4 h-4 text-gray-500 mb-0.5" />
-          </div>
+          </button>
           <ChevronRight className="w-4 h-4 text-gray-400" />
           <span className="font-semibold text-gray-700">Sara 55</span>
-          <ChevronRight className="w-4 h-4 text-gray-400" />
-          <span className="text-prox-green font-bold">
-            {currentView === 'logs' ? 'Proxmox Logs' : currentView === 'bwlist' ? 'White/Black List' : 'DLP Filters'}
-          </span>
-        </div>
-
-        {/* Navigation Tabs */}
-        <div className="flex bg-gray-200/50 p-1 rounded-lg gap-1">
-          <button
-            onClick={() => onNavigate('logs')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
-              currentView === 'logs' 
-                ? 'bg-white text-prox-green shadow-sm' 
-                : 'text-gray-500 hover:bg-gray-200 hover:text-gray-700'
-            }`}
-          >
-            <List className="w-3.5 h-3.5" />
-            LOGS
-          </button>
-          <button
-            onClick={() => onNavigate('bwlist')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
-              currentView === 'bwlist' 
-                ? 'bg-white text-prox-green shadow-sm' 
-                : 'text-gray-500 hover:bg-gray-200 hover:text-gray-700'
-            }`}
-          >
-            <Shield className="w-3.5 h-3.5" />
-            RULES
-          </button>
-          <button
-            onClick={() => onNavigate('dlp')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
-              currentView === 'dlp' 
-                ? 'bg-white text-prox-green shadow-sm' 
-                : 'text-gray-500 hover:bg-gray-200 hover:text-gray-700'
-            }`}
-          >
-            <FileSearch className="w-3.5 h-3.5" />
-            DLP
-          </button>
+          
+          {currentView !== 'dashboard' && (
+            <>
+              <ChevronRight className="w-4 h-4 text-gray-400" />
+              <span className="text-prox-green font-bold animate-in fade-in slide-in-from-left-2">
+                {currentView === 'logs' ? 'Proxmox Logs' : currentView === 'bwlist' ? 'White/Black List' : 'DLP Filters'}
+              </span>
+            </>
+          )}
         </div>
 
       </div>

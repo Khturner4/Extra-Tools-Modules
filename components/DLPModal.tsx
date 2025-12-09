@@ -1,7 +1,8 @@
 
+
 import React, { useState, KeyboardEvent, useEffect } from 'react';
 import { DLPFilter } from '../types';
-import { X, AlertTriangle } from 'lucide-react';
+import { X, AlertTriangle, Plus, Trash2 } from 'lucide-react';
 
 interface DLPModalProps {
   isOpen: boolean;
@@ -51,6 +52,13 @@ const BUILT_IN_TEMPLATES = [
 
 export const DLPModal: React.FC<DLPModalProps> = ({ isOpen, onClose, onSave, initialData }) => {
   const [name, setName] = useState('');
+  
+  // Scope fields
+  const [selectedDomains, setSelectedDomains] = useState<string[]>(['sara55.co']);
+  const [items, setItems] = useState<string[]>([]); // External items
+  const [itemInputValue, setItemInputValue] = useState('');
+  const [direction, setDirection] = useState<'Incoming' | 'Outgoing'>('Outgoing');
+
   const [type, setType] = useState<'Built-in' | 'Custom'>('Built-in');
   
   // Built-in fields
@@ -71,9 +79,12 @@ export const DLPModal: React.FC<DLPModalProps> = ({ isOpen, onClose, onSave, ini
     if (isOpen) {
       if (initialData) {
         setName(initialData.name);
+        setSelectedDomains(initialData.domains.length > 0 ? initialData.domains : ['sara55.co']);
+        setItems(initialData.items || []);
         setType(initialData.type);
         setCaseSensitive(initialData.caseSensitive);
         setNotes(initialData.notes || '');
+        setDirection(initialData.direction || 'Outgoing');
 
         if (initialData.type === 'Built-in') {
           // Try to match exact name, if not found (e.g. legacy data), default to first
@@ -92,6 +103,9 @@ export const DLPModal: React.FC<DLPModalProps> = ({ isOpen, onClose, onSave, ini
       } else {
         // Reset defaults
         setName('');
+        setSelectedDomains(['sara55.co']);
+        setItems([]);
+        setItemInputValue('');
         setType('Built-in');
         setSelectedTemplateName(BUILT_IN_TEMPLATES[0].name);
         setDescription(BUILT_IN_TEMPLATES[0].description);
@@ -99,6 +113,7 @@ export const DLPModal: React.FC<DLPModalProps> = ({ isOpen, onClose, onSave, ini
         setKeywords([]);
         setCaseSensitive(false);
         setNotes('');
+        setDirection('Outgoing');
       }
       setError('');
     }
@@ -126,10 +141,69 @@ export const DLPModal: React.FC<DLPModalProps> = ({ isOpen, onClose, onSave, ini
     setKeywords(keywords.filter((_, i) => i !== idx));
   };
 
+  // --- External Items Logic ---
+  const validateInput = (value: string) => {
+    // 1. Wildcard (All)
+    if (value === '*') return true;
+    // 2. IPv4 Address
+    const ipv4Regex = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/;
+    if (ipv4Regex.test(value)) {
+        const parts = value.split('/')[0].split('.');
+        return parts.every(part => {
+          const num = parseInt(part, 10);
+          return num >= 0 && num <= 255;
+        });
+    }
+    // 3. Email Address
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (emailRegex.test(value)) return true;
+    // 4. Wildcard Email
+    const wildcardEmailRegex = /^\*@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (wildcardEmailRegex.test(value)) return true;
+    // 5. Domain Name
+    const domainRegex = /^(\*\.)?([a-zA-Z0-9]([a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+    if (domainRegex.test(value)) return true;
+    // 6. IPv6
+    if (value.includes(':') && /^[0-9a-fA-F:./]+$/.test(value)) return true;
+    return false;
+  };
+
+  const handleItemKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      addItem();
+    }
+  };
+
+  const addItem = () => {
+    const val = itemInputValue.trim().replace(/,$/, '');
+    if (!val) return;
+    if (items.includes(val)) {
+      setError('Item already exists in the list.');
+      return;
+    }
+    if (!validateInput(val)) {
+      setError('Invalid format. Please enter a valid domain, email or IP.');
+      return;
+    }
+    setItems([...items, val]);
+    setItemInputValue('');
+    setError('');
+  };
+
+  const removeItem = (indexToRemove: number) => {
+    setItems(items.filter((_, idx) => idx !== indexToRemove));
+  };
+
   const handleSave = () => {
     // Validation
     if (!name.trim()) {
       setError('Please enter a name for this DLP filter.');
+      return;
+    }
+    
+    if (items.length === 0) {
+      setError('Please add at least one external domain, email or IP address.');
       return;
     }
 
@@ -142,11 +216,14 @@ export const DLPModal: React.FC<DLPModalProps> = ({ isOpen, onClose, onSave, ini
 
     onSave({
       name,
+      domains: selectedDomains,
+      items,
       type,
+      direction,
       template: type === 'Built-in' ? selectedTemplateName : customPattern,
       description: type === 'Built-in' ? description : undefined,
       keywords: type === 'Custom' ? keywords : [],
-      caseSensitive,
+      caseSensitive: type === 'Built-in' ? false : caseSensitive, // Force false for built-in
       notes: notes.trim() || undefined,
       updatedAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
     });
@@ -182,6 +259,93 @@ export const DLPModal: React.FC<DLPModalProps> = ({ isOpen, onClose, onSave, ini
               placeholder="e.g. Credit Cards, IBAN Numbers..."
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-prox-green focus:ring-1 focus:ring-prox-green outline-none"
             />
+          </div>
+
+          {/* Tenant Domains */}
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">Applies to tenant domain(s) <span className="text-red-500">*</span></label>
+            <select 
+              className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-prox-green focus:ring-1 focus:ring-prox-green outline-none bg-gray-50"
+              value={selectedDomains[0]}
+              onChange={(e) => setSelectedDomains([e.target.value])}
+            >
+              <option value="sara55.co">sara55.co</option>
+              <option value="paying.co">paying.co</option>
+              <option value="15koko.com">15koko.com</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Choose which of your domains this rule affects.
+            </p>
+          </div>
+
+          {/* Direction */}
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-2">Direction <span className="text-red-500">*</span></label>
+            <div className="flex gap-4">
+              {['Incoming', 'Outgoing'].map((opt) => (
+                <label key={opt} className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="radio" 
+                    name="direction" 
+                    value={opt} 
+                    checked={direction === opt}
+                    onChange={(e) => setDirection(e.target.value as any)}
+                    className="text-prox-green focus:ring-prox-green" 
+                  />
+                  <span className="text-sm text-gray-700">{opt}</span>
+                </label>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Specify if this filter applies to incoming or outgoing mail.
+            </p>
+          </div>
+
+          {/* External Items */}
+          <div>
+            <label className="block text-sm font-bold text-gray-700 mb-1">External domains, emails or IP addresses <span className="text-red-500">*</span></label>
+            
+            <div className="flex gap-0 shadow-sm rounded-sm">
+               <input 
+                  type="text" 
+                  value={itemInputValue}
+                  onChange={(e) => {
+                    setItemInputValue(e.target.value);
+                    if (error && error.includes('Invalid format')) setError('');
+                  }}
+                  onKeyDown={handleItemKeyDown}
+                  placeholder="Example: * or *.contoso.com or *.com"
+                  className="flex-1 border border-gray-300 rounded-l-sm border-r-0 px-3 py-2 text-sm focus:ring-1 focus:ring-prox-green focus:border-prox-green outline-none"
+                />
+                <button 
+                  onClick={addItem}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-4 rounded-r-sm flex items-center justify-center transition-colors"
+                  type="button"
+                >
+                  <Plus className="w-5 h-5" />
+                </button>
+            </div>
+            
+            {/* Added Items List */}
+            <div className="mt-3 flex flex-col border-t border-gray-100">
+              {items.map((item, idx) => (
+                <div key={idx} className="flex justify-between items-center bg-white border-b border-gray-100 py-2.5 px-1 hover:bg-gray-50 transition-colors group">
+                  <span className="text-sm text-gray-700 font-medium ml-1">{item}</span>
+                  <button 
+                      onClick={() => removeItem(idx)} 
+                      className="text-gray-400 hover:text-red-600 transition-colors p-1.5 rounded-md hover:bg-red-50"
+                      title="Remove"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+              {items.length === 0 && (
+                <div className="py-2 text-center">
+                  <span className="text-xs text-gray-400 italic">No external entities added.</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Template Type */}
@@ -232,21 +396,6 @@ export const DLPModal: React.FC<DLPModalProps> = ({ isOpen, onClose, onSave, ini
                 <div className="w-full border border-gray-200 bg-gray-100 rounded px-3 py-2 text-sm text-gray-600">
                   {description}
                 </div>
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    checked={caseSensitive}
-                    onChange={(e) => setCaseSensitive(e.target.checked)}
-                    className="rounded text-prox-green focus:ring-prox-green"
-                  />
-                  <span className="text-sm font-bold text-gray-700">Case sensitive</span>
-                </label>
-                <p className="text-xs text-gray-500 mt-1 pl-6">
-                  Enable only if you need strict case matching for this template.
-                </p>
               </div>
             </div>
           ) : (

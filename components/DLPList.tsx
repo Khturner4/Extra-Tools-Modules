@@ -1,4 +1,5 @@
 
+
 import React, { useState } from 'react';
 import { DLPFilter } from '../types';
 import { DLPModal } from './DLPModal';
@@ -12,7 +13,10 @@ import {
   Tag, 
   Check, 
   X as XIcon,
-  Filter
+  Filter,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown
 } from 'lucide-react';
 
 export const DLPList: React.FC = () => {
@@ -30,7 +34,10 @@ export const DLPList: React.FC = () => {
       template: 'Credit Cards (Visa/MC/Amex + Luhn)',
       keywords: [],
       caseSensitive: false,
-      updatedAt: '2025-11-20 09:35'
+      updatedAt: '2025-11-20 09:35',
+      domains: ['sara55.co'],
+      items: ['*'],
+      direction: 'Outgoing'
     },
     {
       id: '2',
@@ -40,7 +47,10 @@ export const DLPList: React.FC = () => {
       keywords: ['alpha-secret', 'top-secret', 'confidential'],
       caseSensitive: true,
       updatedAt: '2025-11-18 14:20',
-      notes: 'Keywords for Project Alpha DLP policy'
+      notes: 'Keywords for Project Alpha DLP policy',
+      domains: ['paying.co'],
+      items: ['user@paying.co', 'admin@paying.co'],
+      direction: 'Incoming'
     },
     {
       id: '3',
@@ -49,7 +59,10 @@ export const DLPList: React.FC = () => {
       template: '^INV-\\d{6}-[A-Z]{2}$',
       keywords: [],
       caseSensitive: true,
-      updatedAt: '2025-11-15 10:00'
+      updatedAt: '2025-11-15 10:00',
+      domains: ['15koko.com'],
+      items: ['finance@15koko.com'],
+      direction: 'Outgoing'
     },
     {
       id: '4',
@@ -58,7 +71,10 @@ export const DLPList: React.FC = () => {
       template: 'IBAN Numbers (International Banking)',
       keywords: [],
       caseSensitive: false,
-      updatedAt: '2025-10-30 11:45'
+      updatedAt: '2025-10-30 11:45',
+      domains: ['sara55.co'],
+      items: ['*'],
+      direction: 'Incoming'
     },
     {
       id: '5',
@@ -67,7 +83,10 @@ export const DLPList: React.FC = () => {
       template: 'Passport Numbers (Format validation)',
       keywords: [],
       caseSensitive: false,
-      updatedAt: '2025-10-28 16:30'
+      updatedAt: '2025-10-28 16:30',
+      domains: ['sara55.co'],
+      items: ['hr@sara55.co'],
+      direction: 'Outgoing'
     }
   ]);
 
@@ -92,6 +111,9 @@ export const DLPList: React.FC = () => {
         keywords: data.keywords || [],
         caseSensitive: data.caseSensitive || false,
         updatedAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
+        domains: data.domains || ['sara55.co'],
+        items: data.items || [],
+        direction: data.direction || 'Outgoing',
         ...data
       };
       setFilters([newFilter, ...filters]);
@@ -107,6 +129,11 @@ export const DLPList: React.FC = () => {
     if (window.confirm(`Are you sure you want to delete the DLP filter "${filter.name}"?`)) {
       setFilters(filters.filter(f => f.id !== filter.id));
     }
+  };
+
+  const DirectionIcon = ({ dir }: { dir: string }) => {
+    if (dir === 'Incoming') return <ArrowDown className="w-3.5 h-3.5" />;
+    return <ArrowUp className="w-3.5 h-3.5" />;
   };
 
   return (
@@ -168,7 +195,8 @@ export const DLPList: React.FC = () => {
             <thead className="bg-gray-50 text-xs uppercase font-bold text-gray-500 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-3">Name</th>
-                <th className="px-6 py-3">Template Type</th>
+                <th className="px-6 py-3">Type</th>
+                <th className="px-6 py-3">Direction</th>
                 <th className="px-6 py-3">Template / Pattern</th>
                 <th className="px-6 py-3">Keywords</th>
                 <th className="px-6 py-3 text-center">Case Sensitive</th>
@@ -189,6 +217,12 @@ export const DLPList: React.FC = () => {
                       {filter.type === 'Built-in' ? <ShieldCheck className="w-3 h-3"/> : <ShieldQuestion className="w-3 h-3"/>}
                       {filter.type}
                     </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-1.5 text-gray-600 text-xs">
+                       <DirectionIcon dir={filter.direction} />
+                       {filter.direction}
+                    </div>
                   </td>
                   <td className="px-6 py-4 font-mono text-xs">
                     {filter.type === 'Built-in' ? (

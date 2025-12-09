@@ -1,4 +1,7 @@
 
+
+export type View = 'dashboard' | 'logs' | 'bwlist' | 'dlp';
+
 export interface LogEntry {
   id: string;
   time: string;
@@ -35,7 +38,7 @@ export interface FilterState {
 export interface BWRule {
   id: string;
   domain: string; // Tenant domain
-  type: 'Allow' | 'Block';
+  type: 'Allow' | 'Block' | 'SPF Whitelist';
   direction: 'Incoming' | 'Outgoing' | 'Both';
   items: string[]; // External domains/emails
   updatedAt: string;
@@ -53,4 +56,7 @@ export interface DLPFilter {
   caseSensitive: boolean;
   updatedAt: string;
   notes?: string;
+  domains: string[]; // Tenant domains
+  items: string[]; // External domains/emails/IPs
+  direction: 'Incoming' | 'Outgoing';
 }

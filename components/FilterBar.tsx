@@ -93,17 +93,6 @@ export const FilterBar: React.FC<FilterBarProps> = ({ filters, setFilters }) => 
             className={inputClass}
           />
         </div>
-        <div className="md:col-span-3">
-          <label className={labelClass}>Virus Info</label>
-          <input 
-            type="text" 
-            name="virusInfo" 
-            placeholder="Enter virus info" 
-            value={filters.virusInfo}
-            onChange={handleChange}
-            className={inputClass}
-          />
-        </div>
 
         {/* Row 3 - Dates */}
         <div className="md:col-span-3">

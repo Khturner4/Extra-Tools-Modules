@@ -11,7 +11,7 @@ interface RuleModalProps {
 }
 
 export const RuleModal: React.FC<RuleModalProps> = ({ isOpen, onClose, onSave, initialData }) => {
-  const [type, setType] = useState<'Allow' | 'Block'>(initialData?.type || 'Allow');
+  const [type, setType] = useState<'Allow' | 'Block' | 'SPF Whitelist'>(initialData?.type || 'Allow');
   const [selectedDomains, setSelectedDomains] = useState<string[]>(initialData ? [initialData.domain] : ['sara55.co']);
   const [direction, setDirection] = useState<'Incoming' | 'Outgoing' | 'Both'>(initialData?.direction || 'Incoming');
   const [inputValue, setInputValue] = useState('');
@@ -102,6 +102,14 @@ export const RuleModal: React.FC<RuleModalProps> = ({ isOpen, onClose, onSave, i
     onClose();
   };
 
+  const handleTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newType = e.target.value as 'Allow' | 'Block' | 'SPF Whitelist';
+    setType(newType);
+    if (newType === 'SPF Whitelist') {
+      setDirection('Incoming');
+    }
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 transition-opacity animate-in fade-in">
       <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl flex flex-col max-h-[90vh]">
@@ -124,14 +132,17 @@ export const RuleModal: React.FC<RuleModalProps> = ({ isOpen, onClose, onSave, i
             <label className="block text-sm font-bold text-gray-700 mb-1">Rule type <span className="text-red-500">*</span></label>
             <select 
               value={type} 
-              onChange={(e) => setType(e.target.value as 'Allow' | 'Block')}
+              onChange={handleTypeChange}
               className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:border-prox-green focus:ring-1 focus:ring-prox-green outline-none"
             >
               <option value="Allow">Allow list (whitelist)</option>
               <option value="Block">Block list (blacklist)</option>
+              <option value="SPF Whitelist">SPF Whitelist</option>
             </select>
             <p className="text-xs text-gray-500 mt-1">
-              Allow list always wins when both allow and block rules match the same message.
+              {type === 'SPF Whitelist' 
+                ? 'When enabled, all inbound messages from the specified source will be automatically allowed' 
+                : 'Allow list always wins when both allow and block rules match the same message.'}
             </p>
           </div>
 
@@ -156,19 +167,26 @@ export const RuleModal: React.FC<RuleModalProps> = ({ isOpen, onClose, onSave, i
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">Direction <span className="text-red-500">*</span></label>
             <div className="flex gap-4">
-              {['Incoming', 'Outgoing', 'Both'].map((opt) => (
-                <label key={opt} className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="radio" 
-                    name="direction" 
-                    value={opt} 
-                    checked={direction === opt}
-                    onChange={(e) => setDirection(e.target.value as any)}
-                    className="text-prox-green focus:ring-prox-green" 
-                  />
-                  <span className="text-sm text-gray-700">{opt}</span>
-                </label>
-              ))}
+              {['Incoming', 'Outgoing'].map((opt) => {
+                const isDisabled = type === 'SPF Whitelist' && opt === 'Outgoing';
+                return (
+                  <label 
+                    key={opt} 
+                    className={`flex items-center gap-2 ${isDisabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+                  >
+                    <input 
+                      type="radio" 
+                      name="direction" 
+                      value={opt} 
+                      checked={direction === opt}
+                      onChange={(e) => setDirection(e.target.value as any)}
+                      disabled={isDisabled}
+                      className="text-prox-green focus:ring-prox-green" 
+                    />
+                    <span className="text-sm text-gray-700">{opt}</span>
+                  </label>
+                );
+              })}
             </div>
             <p className="text-xs text-gray-500 mt-1">
               Incoming: mail from internet to users. Outgoing: mail from users to internet.
